@@ -52,11 +52,20 @@ app.post("/chat/stream", async (req, res) => {
 
       if (!delta || !delta.content) continue;
 
+      // 🔥 FIX: Combine all text fragments for this chunk
+      let combined = "";
+
       for (const item of delta.content) {
-        if (item.type === "text") {
-          res.write(`data: ${item.text}\n\n`);
+        if (item.type === "text" && item.text) {
+          combined += item.text;
         }
       }
+
+      // Skip if empty
+      if (!combined) continue;
+
+      // 🔥 Send single combined chunk (never word fragments)
+      res.write(`data: ${combined}\n\n`);
     }
 
     res.write("data: [DONE]\n\n");
@@ -67,6 +76,7 @@ app.post("/chat/stream", async (req, res) => {
     res.end();
   }
 });
+
 
 // ------------------------------------------------------------
 // Health Check (Optional)
