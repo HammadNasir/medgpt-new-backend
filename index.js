@@ -39,33 +39,26 @@ app.post("/chat/stream", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
-
-    // Flush headers immediately
     res.flushHeaders?.();
 
     const stream = await client.chat.completions.create({
       model,
       messages,
-      stream: true,
-      temperature: 0.5,
+      stream: true
     });
 
     for await (const chunk of stream) {
-      // New OpenAI format example:
-      // chunk.choices[0].delta = { content: [ { type: "text", text: "Hello" } ] }
       const delta = chunk?.choices?.[0]?.delta;
 
       if (!delta || !delta.content) continue;
 
       for (const item of delta.content) {
         if (item.type === "text") {
-          // SSE streaming line
           res.write(`data: ${item.text}\n\n`);
         }
       }
     }
 
-    // Signal streaming completion
     res.write("data: [DONE]\n\n");
     res.end();
   } catch (err) {
