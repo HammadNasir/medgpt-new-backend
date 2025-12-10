@@ -31,5 +31,34 @@ app.post("/chat", async (req, res) => {
   }
 });
 
+app.post("/chat/stream", async (req, res) => {
+  try {
+    const { model, messages } = req.body;
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const stream = await client.chat.completions.create({
+      model,
+      messages,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) {
+        res.write(`data: ${delta}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error");
+  }
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`MedGPT backend running on port ${port}`));
