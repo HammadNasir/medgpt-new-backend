@@ -35,30 +35,54 @@ app.post("/chat/stream", async (req, res) => {
   try {
     const { model, messages } = req.body;
 
+    // SSE headers
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
+
+    // Flush headers immediately
+    res.flushHeaders?.();
 
     const stream = await client.chat.completions.create({
       model,
       messages,
       stream: true,
+      temperature: 0.5,
     });
 
     for await (const chunk of stream) {
-      const delta = chunk.choices?.[0]?.delta?.content;
-      if (delta) {
-        res.write(`data: ${delta}\n\n`);
+      // New OpenAI format example:
+      // chunk.choices[0].delta = { content: [ { type: "text", text: "Hello" } ] }
+      const delta = chunk?.choices?.[0]?.delta;
+
+      if (!delta || !delta.content) continue;
+
+      for (const item of delta.content) {
+        if (item.type === "text") {
+          // SSE streaming line
+          res.write(`data: ${item.text}\n\n`);
+        }
       }
     }
 
+    // Signal streaming completion
     res.write("data: [DONE]\n\n");
     res.end();
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error");
+    console.error("STREAM ERROR:", err);
+    res.write(`data: [ERROR]\n\n`);
+    res.end();
   }
 });
 
+// ------------------------------------------------------------
+// Health Check (Optional)
+// ------------------------------------------------------------
+app.get("/", (req, res) => {
+  res.send("MedGPT backend is running.");
+});
+
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`MedGPT backend running on port ${port}`));
+app.listen(port, () =>
+  console.log(`MedGPT backend running on port ${port}`)
+);
