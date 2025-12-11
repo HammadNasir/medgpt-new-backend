@@ -47,32 +47,26 @@ app.post("/chat/stream", async (req, res) => {
     });
 
     for await (const chunk of stream) {
-      const choice = chunk?.choices?.[0];
-      const delta = choice?.delta;
+      const delta = chunk?.choices?.[0]?.delta?.content;
 
       if (!delta) continue;
 
-      // New consistent text structure (delta.content array)
-      if (Array.isArray(delta.content)) {
-        let combined = "";
-
-        for (const part of delta.content) {
+      // delta is an array in the new API
+      if (Array.isArray(delta)) {
+        for (const part of delta) {
           if (part.type === "text" && part.text) {
-            combined += part.text;
+            res.write(`data: ${part.text}\n\n`);
           }
-        }
-
-        if (combined.length > 0) {
-          res.write(`data: ${combined}\n\n`);
         }
       }
     }
 
     res.write("data: [DONE]\n\n");
     res.end();
+
   } catch (err) {
     console.error("STREAM ERROR:", err);
-    res.write(`data: [ERROR]\n\n`);
+    res.write("data: [ERROR]\n\n");
     res.end();
   }
 });
