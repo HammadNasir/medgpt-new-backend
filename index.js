@@ -35,7 +35,6 @@ app.post("/chat/stream", async (req, res) => {
   try {
     const { model, messages } = req.body;
 
-    // SSE headers
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
@@ -48,24 +47,25 @@ app.post("/chat/stream", async (req, res) => {
     });
 
     for await (const chunk of stream) {
-      const delta = chunk?.choices?.[0]?.delta;
+      const choice = chunk?.choices?.[0];
+      const delta = choice?.delta;
 
-      if (!delta || !delta.content) continue;
+      if (!delta) continue;
 
-      // 🔥 FIX: Combine all text fragments for this chunk
-      let combined = "";
+      // New consistent text structure (delta.content array)
+      if (Array.isArray(delta.content)) {
+        let combined = "";
 
-      for (const item of delta.content) {
-        if (item.type === "text" && item.text) {
-          combined += item.text;
+        for (const part of delta.content) {
+          if (part.type === "text" && part.text) {
+            combined += part.text;
+          }
+        }
+
+        if (combined.length > 0) {
+          res.write(`data: ${combined}\n\n`);
         }
       }
-
-      // Skip if empty
-      if (!combined) continue;
-
-      // 🔥 Send single combined chunk (never word fragments)
-      res.write(`data: ${combined}\n\n`);
     }
 
     res.write("data: [DONE]\n\n");
@@ -76,7 +76,6 @@ app.post("/chat/stream", async (req, res) => {
     res.end();
   }
 });
-
 
 // ------------------------------------------------------------
 // Health Check (Optional)
