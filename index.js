@@ -36,38 +36,27 @@ app.post("/chat/stream", async (req, res) => {
     const { model, messages } = req.body;
 
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.flushHeaders?.();
 
     const stream = await client.chat.completions.create({
       model,
       messages,
-      stream: true
+      stream: true,
     });
 
     for await (const chunk of stream) {
-      const delta = chunk?.choices?.[0]?.delta?.content;
-
-      if (!delta) continue;
-
-      // delta is an array in the new API
-      if (Array.isArray(delta)) {
-        for (const part of delta) {
-          if (part.type === "text" && part.text) {
-            res.write(`data: ${part.text}\n\n`);
-          }
-        }
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) {
+        res.write(`data: ${delta}\n\n`);
       }
     }
 
     res.write("data: [DONE]\n\n");
     res.end();
-
   } catch (err) {
-    console.error("STREAM ERROR:", err);
-    res.write("data: [ERROR]\n\n");
-    res.end();
+    console.error(err);
+    res.status(500).send("Error");
   }
 });
 
