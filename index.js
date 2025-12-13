@@ -46,10 +46,11 @@ app.post("/chat/stream", async (req, res) => {
     });
 
     for await (const chunk of stream) {
-      const delta = chunk.choices?.[0]?.delta?.content;
-      if (delta) {
-        res.write(`data: ${delta}\n\n`);
-      }
+      // const delta = chunk.choices?.[0]?.delta?.content;
+      // if (delta) {
+      //   res.write(`data: ${delta}\n\n`);
+      // }
+      res.write(chunk.choices[0]?.delta?.content || "");
     }
 
     res.write("data: [DONE]\n\n");
