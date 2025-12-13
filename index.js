@@ -50,7 +50,7 @@ app.post("/chat/stream", async (req, res) => {
       // if (delta) {
       //   res.write(`data: ${delta}\n\n`);
       // }
-      res.write(`data: ${chunk.choices[0]?.delta?.content}` || "");
+      res.write(`data: ${chunk.choices[0]?.delta?.content}\n\n` || "");
     }
 
     res.write("data: [DONE]\n\n");
