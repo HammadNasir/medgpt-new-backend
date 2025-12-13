@@ -50,7 +50,17 @@ app.post("/chat/stream", async (req, res) => {
       // if (delta) {
       //   res.write(`data: ${delta}\n\n`);
       // }
-      res.write(`data: ${chunk.choices[0]?.delta?.content}\n\n` || "");
+      // res.write(`data: ${chunk.choices[0]?.delta?.content}\n\n` || "");
+      const delta = chunk.choices?.[0]?.delta;
+
+      if (!delta || !Array.isArray(delta.content)) continue;
+
+      for (const part of delta.content) {
+        if (part.type === "text" && part.text) {
+          // IMPORTANT: send text exactly as OpenAI provides it
+          res.write(`data: ${part.text}\n\n`);
+        }
+      }
     }
 
     res.write("data: [DONE]\n\n");
